@@ -2,82 +2,75 @@ import java.util.*;
 
 /**
  * TODO: implement the SRTF (Shortest Remaining Time First) scheduling algorithm.
- *
  * SRTF is also known as preemptive SJF
  */
-
 public class SRTF extends Algorithm{
 
     private final LinkedList<Process> readyQueue = new LinkedList<>();
-
     private final Queue<Process> processesToArrive;
-
+    private final List<Process> allProcesses;
     private int now = 0;
 
-    public SRTF(List<Process> allProcesses){
+    public SRTF(List<Process> allProcesses) {
         super(allProcesses);
+        this.allProcesses = allProcesses;
         processesToArrive = new LinkedList<>(allProcesses);
+
+        // Initialize remaining time for each process
+        for (Process p : allProcesses) {
+            p.setRemainingTime(p.getBurstTime());
+        }
     }
 
     @Override
-    public void schedule(){
+    public void schedule() {
         System.out.println("Shortest Remaining Time First:");
 
-        while (!readyQueue.isEmpty() || !processesToArrive.isEmpty()) {
-            if (readyQueue.isEmpty()) {
-                Process process = processesToArrive.remove();
-                if (now < process.getArrivalTime()) {
-                    //advance the simulation clock to the next process's arrival time
-                    now = process.getArrivalTime();
-                }
-                readyQueue.add(process);
-            }
+        Process currentProcess = null;
 
+        while (!readyQueue.isEmpty() || !processesToArrive.isEmpty() || currentProcess != null) {
 
-            Process currentProcess = readyQueue.getFirst();
-
-            //Have a loop that sorts through the ready queue, organizing by bursttime
-            for (int i = 0; i < readyQueue.size(); i++) {
-                int minIndex = i;
-                for (int j = i + 1; j < readyQueue.size(); j++) {
-                    if (readyQueue.get(j).getBurstTime() < readyQueue.get(minIndex).getBurstTime()) {
-                        if (minIndex != i) {
-                            Process tempProcess = readyQueue.get(i);
-                            readyQueue.set(i, readyQueue.get(minIndex));
-                            readyQueue.set(minIndex, tempProcess);
-                        }
-
-                    }
-                }
-            }
-
-
-            //Compare the quickest item in readyqueue to the current & switch
-            if(currentProcess.getBurstTime() <= readyQueue.get(0).getBurstTime()){
-                Process tempProcess = currentProcess;
-                currentProcess = readyQueue.get(0);
-                readyQueue.set(0, tempProcess);
-            }
-
-            int runTime = currentProcess.getBurstTime();
-            System.out.print("At time " + now + ": ");
-            CPU.run(currentProcess, runTime);
-
-            now += runTime;
-
-            currentProcess.setRemainingTime(0);
-            currentProcess.setFinishTime(now);
-
-            if(currentProcess.getRemainingTime() == 0){
-                currentProcess = readyQueue.getFirst();
-                readyQueue.removeFirst();
-            }
-
-            // If any processes have arrived by 'now', add them to ready queue
-            while(!processesToArrive.isEmpty() && processesToArrive.peek().getArrivalTime()<=now){
+            while (!processesToArrive.isEmpty() && processesToArrive.peek().getArrivalTime() <= now) {
                 readyQueue.add(processesToArrive.remove());
             }
+
+            readyQueue.sort(Comparator.comparingInt(Process::getRemainingTime));
+
+            if (!readyQueue.isEmpty()) {
+                if (currentProcess == null || currentProcess.getRemainingTime() > readyQueue.getFirst().getRemainingTime()) {
+                    currentProcess = readyQueue.getFirst();
+                }
+            }
+
+            if (currentProcess == null) {
+                if (!processesToArrive.isEmpty()) {
+                    now = processesToArrive.peek().getArrivalTime();
+                    continue;
+                } else {
+                    break;
+                }
+            }
+
+            System.out.println("At time " + now + ": CPU runs " + currentProcess + " for duration 1");
+            CPU.run(currentProcess, 1);
+            now += 1;
+            currentProcess.setRemainingTime(currentProcess.getRemainingTime() - 1);
+
+            if (currentProcess.getRemainingTime() == 0) {
+                currentProcess.setFinishTime(now);
+                readyQueue.remove(currentProcess);
+                currentProcess = null;
+            }
         }
+
+        int totalWait = 0;
+        for (Process p : allProcesses) {
+            int waitingTime = p.getFinishTime() - p.getArrivalTime() - p.getBurstTime();
+            System.out.println(p.getName() + "'s waiting time is " + waitingTime);
+            totalWait += waitingTime;
+        }
+
+        double avgWait = (double) totalWait / allProcesses.size();
+        System.out.println("Average wait time is " + avgWait);
     }
 }
-
