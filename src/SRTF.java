@@ -27,6 +27,7 @@ public class SRTF extends Algorithm{
         System.out.println("Shortest Remaining Time First:");
 
         Process currentProcess = null;
+        int runStart = -1;
 
         while (!readyQueue.isEmpty() || !processesToArrive.isEmpty() || currentProcess != null) {
 
@@ -38,7 +39,12 @@ public class SRTF extends Algorithm{
 
             if (!readyQueue.isEmpty()) {
                 if (currentProcess == null || currentProcess.getRemainingTime() > readyQueue.getFirst().getRemainingTime()) {
+                    if (currentProcess != null) {
+                        int duration = now - runStart;
+                        System.out.println("At time " + runStart + ": CPU ran " + currentProcess + " for duration " + duration);
+                    }
                     currentProcess = readyQueue.getFirst();
+                    runStart = now;
                 }
             }
 
@@ -51,26 +57,19 @@ public class SRTF extends Algorithm{
                 }
             }
 
-            System.out.println("At time " + now + ": CPU runs " + currentProcess + " for duration 1");
             CPU.run(currentProcess, 1);
-            now += 1;
+            now++;
             currentProcess.setRemainingTime(currentProcess.getRemainingTime() - 1);
 
             if (currentProcess.getRemainingTime() == 0) {
+                int duration = now - runStart;
+                System.out.println("At time " + runStart + ": CPU ran " + currentProcess + " for duration " + duration);
                 currentProcess.setFinishTime(now);
                 readyQueue.remove(currentProcess);
                 currentProcess = null;
             }
         }
 
-        int totalWait = 0;
-        for (Process p : allProcesses) {
-            int waitingTime = p.getFinishTime() - p.getArrivalTime() - p.getBurstTime();
-            System.out.println(p.getName() + "'s waiting time is " + waitingTime);
-            totalWait += waitingTime;
-        }
 
-        double avgWait = (double) totalWait / allProcesses.size();
-        System.out.println("Average wait time is " + avgWait);
     }
 }
